@@ -19,7 +19,7 @@ jobs:
 
       - name: Extract Flutter Project
         run: |
-          unzip Radio_Dewi_Anjani_AI_Project001.zip -d app
+          unzip Radio_Dewi_Anjani001.zip -d app
 
       - name: Copy Radio Logo
         run: |

@@ -12,32 +12,63 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Extract project
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Extract Flutter Project
         run: |
           unzip Radio_Dewi_Anjani_AI_Project001.zip -d app
 
-      - uses: subosito/flutter-action@v2
+      - name: Copy Radio Logo
+        run: |
+          mkdir -p app/assets/icon
+          cp assets/icon/logo_radio.png app/assets/icon/logo_radio.png
+          echo "Logo Radio Dewi Anjani berhasil disiapkan."
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
           channel: stable
+          cache: true
 
       - name: Prepare Android
         working-directory: app
         run: flutter create . --platforms=android
 
-      - name: Install packages
+      - name: Install Icon Generator
+        working-directory: app
+        run: flutter pub add --dev flutter_launcher_icons
+
+      - name: Configure App Icon
+        working-directory: app
+        run: |
+          cat > flutter_launcher_icons.yaml <<'EOF'
+          flutter_launcher_icons:
+            android: true
+            ios: false
+            image_path: "assets/icon/logo_radio.png"
+            adaptive_icon_background: "#FFFFFF"
+            adaptive_icon_foreground: "assets/icon/logo_radio.png"
+            min_sdk_android: 21
+          EOF
+
+      - name: Install Packages
         working-directory: app
         run: flutter pub get
+
       - name: Generate App Icon
         working-directory: app
-        run: dart run flutter_launcher_icons
-      - name: Build APK
+        run: dart run flutter_launcher_icons -f flutter_launcher_icons.yaml
+
+      - name: Build Release APK
         working-directory: app
         run: flutter build apk --release
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: Radio-Dewi-Anjani-APK
           path: app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error

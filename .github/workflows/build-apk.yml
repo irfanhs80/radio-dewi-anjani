@@ -1,5 +1,5 @@
 
-name: Build APK Radio Dewi Anjani
+name: Build APK Radio Dewi Anjani Universal
 
 on:
   workflow_dispatch:
@@ -38,11 +38,16 @@ jobs:
       - name: Prepare Official Radio Logo
         run: |
           set -e
-
           mkdir -p app/assets/icon
 
-          if [ -f logo_radio.png ]; then
+          SOURCE_LOGO=""
+
+          if [ -f "logo_radio.png" ]; then
             SOURCE_LOGO="logo_radio.png"
+          elif [ -f "logo_radio.jpg" ]; then
+            SOURCE_LOGO="logo_radio.jpg"
+          elif [ -f "logo_radio.jpeg" ]; then
+            SOURCE_LOGO="logo_radio.jpeg"
           else
             SOURCE_LOGO=$(find app/assets -type f \
               \( -iname 'logo_radio.png' \
@@ -53,10 +58,12 @@ jobs:
 
           if [ -z "$SOURCE_LOGO" ] || [ ! -f "$SOURCE_LOGO" ]; then
             echo "ERROR: Logo Radio Dewi Anjani tidak ditemukan."
-            find app/assets -type f
+            echo "Daftar file gambar yang tersedia:"
+            find app -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \)
             exit 1
           fi
 
+          echo "Logo ditemukan: $SOURCE_LOGO"
           export SOURCE_LOGO
 
           python - <<'PY'
@@ -66,7 +73,7 @@ jobs:
           source = os.environ["SOURCE_LOGO"]
 
           img = Image.open(source).convert("RGB")
-          img.thumbnail((512, 512), Image.Resampling.LANCZOS)
+          img.thumbnail((460, 460), Image.Resampling.LANCZOS)
 
           canvas = Image.new("RGB", (512, 512), "white")
           x = (512 - img.width) // 2
@@ -82,11 +89,11 @@ jobs:
           canvas.save(
               "app/assets/logo_radio.jpg",
               "JPEG",
-              quality=80,
+              quality=90,
               optimize=True
           )
 
-          print("Logo resmi berhasil dipasang.")
+          print("Logo resmi berhasil disiapkan.")
           PY
 
       - name: Setup Flutter
@@ -124,19 +131,20 @@ jobs:
         working-directory: app
         run: dart run flutter_launcher_icons -f flutter_launcher_icons.yaml
 
-      - name: Build Release APK
+      - name: Build Universal APK
         working-directory: app
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release
 
-      - name: Check APK Size
+      - name: Check APK
         working-directory: app
         run: |
           echo "HASIL BUILD APK:"
           ls -lh build/app/outputs/flutter-apk/
+          test -f build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Radio-Dewi-Anjani-APK
-          path: app/build/app/outputs/flutter-apk/*.apk
+          name: Radio-Dewi-Anjani-Universal-APK
+          path: app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error

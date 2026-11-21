@@ -14,79 +14,56 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Ambil source code repository
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. Ekstrak proyek Flutter
       - name: Extract Flutter Project
         run: |
           set -e
-          test -f Radio_Dewi_Anjani001.zip
-          mkdir -p app
           unzip -q Radio_Dewi_Anjani001.zip -d app
 
           test -f app/pubspec.yaml
           test -f app/lib/main.dart
 
-          echo "Source code Flutter ditemukan."
+          echo "Source Flutter berhasil diekstrak."
 
-      # 3. Cari logo dari repository atau ZIP
-      - name: Find Radio Logo
-        id: logo
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Image Tools
+        run: pip install Pillow
+
+      - name: Prepare Official Radio Logo
         run: |
           set -e
 
-          LOGO=""
+          mkdir -p app/assets/icon
 
-          for FILE in \
-            assets/icon/logo_radio.png \
-            assets/logo_radio.png \
-            app/assets/icon/logo_radio.png \
-            app/assets/logo_radio.png \
-            app/assets/logo_radio.jpg \
-            app/assets/logo_radio.jpeg \
-            app/assets/logo_radio.webp
-          do
-            if [ -f "$FILE" ]; then
-              LOGO="$FILE"
-              break
-            fi
-          done
-
-          if [ -z "$LOGO" ]; then
-            LOGO=$(find app/assets -type f \
+          if [ -f logo_radio.png ]; then
+            SOURCE_LOGO="logo_radio.png"
+          else
+            SOURCE_LOGO=$(find app/assets -type f \
               \( -iname 'logo_radio.png' \
               -o -iname 'logo_radio.jpg' \
-              -o -iname 'logo_radio.jpeg' \
-              -o -iname 'logo_radio.webp' \) \
+              -o -iname 'logo_radio.jpeg' \) \
               -print -quit)
           fi
 
-          if [ -z "$LOGO" ]; then
-            echo "ERROR: Logo tidak ditemukan."
+          if [ -z "$SOURCE_LOGO" ] || [ ! -f "$SOURCE_LOGO" ]; then
+            echo "ERROR: Logo Radio Dewi Anjani tidak ditemukan."
             find app/assets -type f
             exit 1
           fi
 
-          echo "LOGO=$LOGO" >> "$GITHUB_ENV"
-          echo "Logo ditemukan: $LOGO"
+          export SOURCE_LOGO
 
-      # 4. Siapkan logo Android dan gambar aplikasi
-      - name: Prepare Radio Logo
-        run: |
-          set -e
-
-          python3 -m pip install Pillow
-
-          mkdir -p app/assets/icon
-
-          python3 - <<'PY'
+          python - <<'PY'
           import os
           from PIL import Image
 
-          source = os.environ["LOGO"]
-          out = "app/assets/icon/logo_radio.png"
+          source = os.environ["SOURCE_LOGO"]
 
           img = Image.open(source).convert("RGB")
           img.thumbnail((512, 512), Image.Resampling.LANCZOS)
@@ -96,19 +73,12 @@ jobs:
           y = (512 - img.height) // 2
           canvas.paste(img, (x, y))
 
-          canvas.save(out, "PNG", optimize=True)
-
-          # Logo ringan untuk tampilan aplikasi.
-          small = canvas.copy()
-          small.thumbnail((384, 384), Image.Resampling.LANCZOS)
-          small.save(
-              "app/assets/logo_radio.webp",
-              "WEBP",
-              quality=78,
-              method=6
+          canvas.save(
+              "app/assets/icon/logo_radio.png",
+              "PNG",
+              optimize=True
           )
 
-          # Kompatibilitas source code lama.
           canvas.save(
               "app/assets/logo_radio.jpg",
               "JPEG",
@@ -116,27 +86,23 @@ jobs:
               optimize=True
           )
 
-          print("Logo berhasil disiapkan.")
+          print("Logo resmi berhasil dipasang.")
           PY
 
-      # 5. Instal Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
-      # 6. Persiapkan Android
       - name: Prepare Android
         working-directory: app
         run: flutter create . --platforms=android
 
-      # 7. Instal generator ikon
       - name: Install Icon Generator
         working-directory: app
         run: flutter pub add --dev flutter_launcher_icons
 
-      # 8. Konfigurasi ikon Android
       - name: Configure App Icon
         working-directory: app
         run: |
@@ -150,29 +116,24 @@ jobs:
             min_sdk_android: 21
           EOF
 
-      # 9. Instal semua package
       - name: Install Packages
         working-directory: app
         run: flutter pub get
 
-      # 10. Generate ikon aplikasi
       - name: Generate App Icon
         working-directory: app
         run: dart run flutter_launcher_icons -f flutter_launcher_icons.yaml
 
-      # 11. Build APK berdasarkan arsitektur
       - name: Build Release APK
         working-directory: app
         run: flutter build apk --release --split-per-abi
 
-      # 12. Periksa ukuran APK
       - name: Check APK Size
         working-directory: app
         run: |
+          echo "HASIL BUILD APK:"
           ls -lh build/app/outputs/flutter-apk/
-          du -h build/app/outputs/flutter-apk/*.apk
 
-      # 13. Upload hasil APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:

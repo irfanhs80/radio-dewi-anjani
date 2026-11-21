@@ -21,7 +21,7 @@ jobs:
         run: |
           unzip Radio_Dewi_Anjani001.zip -d app
 
-      - name: Copy Radio Logo
+      - name: Radio Logo
         run: |
           mkdir -p app/assets/icon
           cp assets/icon/logo_radio.png app/assets/icon/logo_radio.png

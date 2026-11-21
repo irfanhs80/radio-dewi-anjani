@@ -30,7 +30,9 @@ jobs:
       - name: Install packages
         working-directory: app
         run: flutter pub get
-
+      - name: Generate App Icon
+        working-directory: app
+        run: dart run flutter_launcher_icons
       - name: Build APK
         working-directory: app
         run: flutter build apk --release
